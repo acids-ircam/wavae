@@ -1,10 +1,8 @@
 # WaVAE
 
-Cause I love naming models <3
+Despite its name, its not a waveform based VAE, but a melspec one with a melGAN decoder. There is also an adversarial regularization on the latent space in order to extract the loudness from it. You can even use it on your dataset, and train the whole thing in maybe 2-4 days on a single GPU.
 
-Despite its name, its not a waveform based VAE, but a melspec one with a melGAN decoder. There is also an adversarial regularization on the latent space in order to extract the loudness from it. That's actually pretty cool ! You can even use it on your dataset, and train the whole thing in maybe 2-4 days on a single GPU.
-
-This model has realtime generation (on CPU, even if it can burn it lol, so you'd better stick to GPU) and a highly-compressed and expressive latent representation.
+This model has realtime generation and a highly-compressed and expressive latent representation.
 
 ## PureData usage demo
 
@@ -18,7 +16,7 @@ Train the spectral model
 python train.py -c vanilla --wav-loc YOUR_DATA_FOLDER --name ENTER_A_COOL_NAME
 ```
 
-Remember to delete the `preprocessed` folder between each training, as the models don't use the same preprocessing pipeline. (You can also outsmart us all and use the `--lmdb-loc` flag with a different path for each model)
+Remember to delete the `preprocessed` folder between each training, as the models don't use the same preprocessing pipeline. (You can also use the `--lmdb-loc` flag with a different path for each model)
 
 Train the waveform model
 ```bash
@@ -33,7 +31,7 @@ Onced both models are trained, trace them using
 python make_wrapper.py --name AGAIN_THE_SAME_COOL_NAME
 ```
 
-It will produce a traced script in `runs/COOL_NAME/COOLNAME_LOTSOFWEIRDNUMBERS.ts`. It can be deployed, used in a libtorch C++ environement, inside a Max/MSP playground that won't be named here, without having to use the source code. AND if you want to use the swaggy realtime abilities of this model, just pass the `--use-cached-padding true --buffer-size 2048`.
+It will produce a traced script in `runs/COOL_NAME/COOLNAME_LOTSOFWEIRDNUMBERS.ts`. It can be deployed, used in a libtorch C++ environement, without having to use the source code. AND if you want to use the realtime abilities of this model, just pass the `--use-cached-padding true --buffer-size 2048`.
 
 ## Compiling
 

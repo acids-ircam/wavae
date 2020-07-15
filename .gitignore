@@ -1,0 +1,15 @@
+*.pyc
+*.pt
+*.pth
+*.DS_Store
+*runs*
+*.mdb
+*.vscode
+*.ts
+*build*
+*bin*
+*.wav
+*.deb
+*.json
+!*package.json
+*node_modules*

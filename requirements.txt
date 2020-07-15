@@ -1,0 +1,9 @@
+torch>=1.5.0
+lmdb>=0.98
+tqdm>=4.46.0
+scipy>=1.4.1
+librosa>=0.7.2
+effortless_config>=0.6.1
+numpy>=1.18.4
+matplotlib>=3.2.1
+scikit_learn>=0.23.1

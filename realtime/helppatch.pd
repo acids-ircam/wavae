@@ -1,0 +1,43 @@
+#N canvas 697 352 450 167 12;
+#N canvas 129 175 713 300 ai_magic 0;
+#X obj 16 220 loadbang;
+#X msg 16 245 set 2048 1 0.5;
+#X obj 16 270 block~;
+#X obj 17 64 wavae/encoder~ 8 2048;
+#X obj 16 150 wavae/decoder~ 8 2048;
+#X obj 16 30 inlet~;
+#X obj 16 182 outlet~;
+#X text 239 49 The wavae external is composed of two sub externals:
+an encoder~ and a decoder~ (making a complete autoencoder <3). The
+first arguments sets the latent space dimensionality (swag) and the
+second arguments sets the buffer size. This subpatch is where the ai
+magic happens ! Actually there is a reason why we encapsulate the encoding
+/ decoding process inside a subpatch: given that the generation of
+a traced model is based on a fixed buffer size / sampling rate basis
+\, we have to enforce it using the block~ object. For example here
+\, we have a model trained at 24kHz \, with a buffer size of 2048 \,
+hence we put jack at 48kHz and multiply by 0.5 it to reach 24kHz in
+this subpatch. Voila !;
+#N canvas 921 439 450 250 (subpatch) 0;
+#X text 28 1 wavae autoencoder;
+#X coords 0 1 100 -1 180 200 1 0 0;
+#X restore 8 7 graph;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 3 0 4 0;
+#X connect 3 1 4 1;
+#X connect 3 2 4 2;
+#X connect 3 3 4 3;
+#X connect 3 4 4 4;
+#X connect 3 5 4 5;
+#X connect 3 6 4 6;
+#X connect 3 7 4 7;
+#X connect 4 0 6 0;
+#X connect 5 0 3 0;
+#X restore 72 70 pd ai_magic;
+#X obj 73 26 adc~;
+#X obj 72 116 dac~;
+#X text 217 40 Help patch for wavae.;
+#X text 166 65 <----- OPEN THAT SHINY THING;
+#X connect 0 0 2 0;
+#X connect 1 0 0 0;

@@ -17,9 +17,6 @@ class Vanilla(nn.Module):
                              use_cached_padding=use_cached_padding,
                              extract_loudness=extract_loudness)
 
-        if extract_loudness:
-            self.classifier = Classifier()
-
     def forward(self, x, loudness=None):
         S = self.melencoder(x)
         y, mean_y, logvar_y, mean_z, logvar_z = self.topvae(S, loudness)

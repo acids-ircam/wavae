@@ -51,9 +51,6 @@ class ConvDecoder(nn.Module):
         self.channels[0] *= 2
         self.channels[-1] //= 2
 
-        if extract_loudness:
-            self.channels[-1] += 1
-
         self.convs = []
 
         for i in range(len(self.ratios))[::-1]:

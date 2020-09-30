@@ -10,7 +10,7 @@ def train_step_melgan(model, opt, data, writer, ROOT, step, device):
     gen, dis = model
     opt_gen, opt_dis = opt
 
-    data = data.unsqueeze(1).to(device)
+    data = data.float().unsqueeze(1).to(device)
 
     y = gen(data)
 
@@ -72,36 +72,18 @@ def train_step_vanilla(model,
                        step,
                        device,
                        flattening=None):
-    if config.EXTRACT_LOUDNESS:
-        sample, loudness = data
-        sample = sample.to(device)
-        loudness = loudness.to(device)
-        fl = loudness.cpu().detach().numpy().reshape(-1)
-        fl = flattening(fl)
-        fl = torch.from_numpy(fl).float().to(loudness.device)
-    else:
-        sample = data[0].to(device)
-        loudness = None
+
+    sample = data.float().to(device)
+    loudness = None
 
     with torch.no_grad():
         S = model.melencoder(sample)
 
     # COMPUTE AUTOENCODER REC AND REG LOSSES
     out = model.topvae.loss(S, loudness)
+
     y, mean_y, logvar_y, mean_z, logvar_z, loss_rec, loss_reg = out
     loss = loss_rec + .1 * loss_reg
-
-    # COMPUTE DOMAIN ADAPTATION LOSS
-    if config.EXTRACT_LOUDNESS:
-        z = torch.randn_like(mean_z) * torch.exp(logvar_z) + mean_z
-        mean_loudness, logvar_loudness = model.classifier(
-            z, 1 - np.exp(-step / 100000))
-        mean_loudness = torch.sigmoid(mean_loudness).reshape(-1)
-        logvar_loudness = torch.clamp(logvar_loudness, -10, 0).reshape(-1)
-
-        loss_da = torch.mean(logvar_loudness + (mean_loudness - fl)**2 *
-                             torch.exp(-logvar_loudness))
-        loss += loss_da
 
     opt.zero_grad()
     loss.backward()
@@ -109,10 +91,6 @@ def train_step_vanilla(model,
 
     writer.add_scalar("loss_rec", loss_rec, step)
     writer.add_scalar("loss_reg", loss_reg, step)
-
-    if config.EXTRACT_LOUDNESS:
-        writer.add_scalar("loss_da", loss_da, step)
-        writer.add_scalar("lambda da", 1 - np.exp(-step / 100000), step)
 
     if step % config.BACKUP == 0:
         backup_name = path.join(ROOT, f"vanilla_state.pth")
@@ -124,13 +102,6 @@ def train_step_vanilla(model,
         writer.add_histogram("logvar_y", logvar_y.reshape(-1), step)
         writer.add_histogram("mean_z", mean_z.reshape(-1), step)
         writer.add_histogram("logvar_z", logvar_z.reshape(-1), step)
-
-        if config.EXTRACT_LOUDNESS:
-            writer.add_histogram("mean_loudness", mean_loudness.reshape(-1),
-                                 step)
-            writer.add_histogram("logvar_loudness",
-                                 logvar_loudness.reshape(-1), step)
-            writer.add_histogram("flattened_loudness", fl.reshape(-1), step)
 
         ori = S.detach().cpu().numpy()
         ori = np.concatenate([o for o in ori[:4]], -1)

@@ -6,21 +6,26 @@ from effortless_config import Config
 import numpy as np
 
 from src import config
-from src import get_model, Discriminator, preprocess
+from src import get_model, Discriminator
 from src import train_step_melgan, train_step_vanilla
-from src import Loader, get_flattening_function, gaussian_cdf
+from src import Loader
 
 from tqdm import tqdm
 from os import path
 
 config.parse_args()
+# config.override(WAV_LOC="/Users/caillon/Desktop/")
+# config.override(EVAL=10)
 
 # PREPARE DATA
-dataset = Loader(config.AUGMENT)
-dataloader = torch.utils.data.DataLoader(dataset,
-                                         batch_size=config.BATCH,
-                                         shuffle=True,
-                                         drop_last=True)
+dataset = Loader(config)
+dataloader = torch.utils.data.DataLoader(
+    dataset,
+    batch_size=config.BATCH,
+    shuffle=True,
+    drop_last=True,
+    num_workers=8,
+)
 
 # PREPARE MODELS
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -63,27 +68,6 @@ with open(path.join(ROOT, "config.py"), "w") as config_out:
     config_out.write("from effortless_config import Config\n")
     config_out.write(str(config))
 
-# POST LOADING PROCESSING
-with torch.no_grad():
-    if config.TYPE == "vanilla" and config.EXTRACT_LOUDNESS:
-        try:
-            print("flatten loudness found, loading")
-            weights, means, stds = np.load(path.join(ROOT, "flatten.npy"))
-            flattening_function = gaussian_cdf(weights, means, stds)
-        except:
-            loudness = []
-            for sample, loud_ in tqdm(dataloader, desc="parsing loudness"):
-                loudness.append(loud_.reshape(-1))
-            loudness = torch.cat(loudness, 0).unsqueeze(1).numpy()
-            loudness = loudness[:1000000]
-            print("flattening dataset loudness...")
-            weights, means, stds = get_flattening_function(loudness)
-            np.save(path.join(ROOT, "flatten.npy"), [weights, means, stds])
-            flattening_function = gaussian_cdf(weights, means, stds)
-
-    else:
-        flattening_function = None
-
 print("Start training !")
 
 # TRAINING PROCESS
@@ -98,7 +82,7 @@ for e in range(config.EPOCH):
                                ROOT,
                                step,
                                device,
-                               flattening=flattening_function)
+                               flattening=None)
 
         elif config.TYPE == "melgan":
             train_step_melgan(model, opt, batch, writer, ROOT, step, device)

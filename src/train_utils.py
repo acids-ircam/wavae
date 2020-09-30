@@ -82,7 +82,7 @@ def train_step_vanilla(model,
     # COMPUTE AUTOENCODER REC AND REG LOSSES
     out = model.topvae.loss(S, loudness)
 
-    y, mean_y, logvar_y, mean_z, logvar_z, loss_rec, loss_reg = out
+    y,   mean_z, logvar_z, loss_rec, loss_reg = out
     loss = loss_rec + .1 * loss_reg
 
     opt.zero_grad()
@@ -98,8 +98,6 @@ def train_step_vanilla(model,
         torch.save(states, backup_name)
 
     if step % config.EVAL == 0:
-        writer.add_histogram("mean_y", mean_y.reshape(-1), step)
-        writer.add_histogram("logvar_y", logvar_y.reshape(-1), step)
         writer.add_histogram("mean_z", mean_z.reshape(-1), step)
         writer.add_histogram("logvar_z", logvar_z.reshape(-1), step)
 

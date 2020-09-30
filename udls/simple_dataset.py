@@ -23,6 +23,25 @@ def dummy_load(name):
         return None
 
 
+def simple_audio_preprocess(sampling_rate, N):
+    def preprocess(name):
+        try:
+            x, sr = li.load(name, sr=sampling_rate)
+        except KeyboardInterrupt:
+            exit()
+        except Exception as e:
+            print(e)
+            return None
+
+        pad = (N - (len(x) % N)) % N
+        x = np.pad(x, (0, pad))
+
+        x = x.reshape(-1, N)
+        return x.astype(np.float32)
+
+    return preprocess
+
+
 class SimpleDataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -30,9 +49,9 @@ class SimpleDataset(torch.utils.data.Dataset):
         folder_list=None,
         file_list=None,
         preprocess_function=dummy_load,
+        transforms=None,
         extension="*.wav,*.aif",
-        map_size=1e9,
-        multiprocess=True,
+        map_size=1e11,
         split_percent=.2,
         split_set="train",
         seed=0,
@@ -48,7 +67,8 @@ class SimpleDataset(torch.utils.data.Dataset):
 
         self.preprocess_function = preprocess_function
         self.extension = extension
-        self.multiprocess = multiprocess
+
+        self.transforms = transforms
 
         makedirs(out_database_location, exist_ok=True)
 
@@ -93,38 +113,20 @@ class SimpleDataset(torch.utils.data.Dataset):
             with open(self.file_list, "r") as file_list:
                 wavs = file_list.read().split("\n")
 
-        # CREATE ASYNCHRONOUS PREPROCESS TASKS
-        if self.multiprocess:
-            futures = []
-            with ProcessPoolExecutor() as executor:
-                for wav in wavs:
-                    futures.append((path.basename(wav),
-                                    executor.submit(self.preprocess_function,
-                                                    wav)))
-                loader = tqdm(futures)
-                for name, f in loader:
-                    loader.set_description("{}".format(name))
-                    try:
-                        output = f.result(timeout=60)
-                    except TimeoutError:
-                        output = None
-                        print("Failed to preprocess {}".format(name))
-                    if output is not None:
-                        for o in output:
-                            self.env[idx] = o
-                            idx += 1
-        else:
-            loader = tqdm(wavs)
-            for wav in loader:
-                loader.set_description("{}".format(path.basename(wav)))
-                output = self.preprocess_function(wav)
-                if output is not None:
-                    for o in output:
-                        self.env[idx] = o
-                        idx += 1
+        loader = tqdm(wavs)
+        for wav in loader:
+            loader.set_description("{}".format(path.basename(wav)))
+            output = self.preprocess_function(wav)
+            if output is not None:
+                for o in output:
+                    self.env[idx] = o
+                    idx += 1
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, index):
-        return self.env[self.index[index + self.offset]]
+        data = self.env[self.index[index + self.offset]]
+        if self.transforms is not None:
+            data = self.transforms(data)
+        return data

@@ -117,10 +117,10 @@ class TopVAE(nn.Module):
         if loudness is not None:
             z = torch.cat([loudness, z], 1)
         y = self.decode(z)
-        return y,  mean_z, logvar_z
+        return y, mean_z, logvar_z
 
     def loss(self, x, loudness):
-        y,   mean_z, logvar_z = self.forward(x, loudness)
+        y, mean_z, logvar_z = self.forward(x, loudness)
 
         loss_rec = nn.functional.mse_loss(y, x)
 
@@ -129,4 +129,4 @@ class TopVAE(nn.Module):
         loss_rec = torch.mean(loss_rec)
         loss_reg = torch.mean(loss_reg)
 
-        return y,  mean_z, logvar_z, loss_rec, loss_reg
+        return y, mean_z, logvar_z, loss_rec, loss_reg

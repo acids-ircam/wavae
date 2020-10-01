@@ -8,8 +8,12 @@ makedirs(f"{PACKAGE}/usr/local/lib/pd-externals/wavae/")
 makedirs(f"{PACKAGE}/DEBIAN/")
 
 system(f"cp build/*.pd_linux {PACKAGE}/usr/local/lib/pd-externals/wavae/")
-system(f"cp helppatch.pd {PACKAGE}/usr/local/lib/pd-externals/wavae/help-encoder~.pd")
-system(f"cp helppatch.pd {PACKAGE}/usr/local/lib/pd-externals/wavae/help-decoder~.pd")
+system(
+    f"cp helppatch.pd {PACKAGE}/usr/local/lib/pd-externals/wavae/help-encoder~.pd"
+)
+system(
+    f"cp helppatch.pd {PACKAGE}/usr/local/lib/pd-externals/wavae/help-decoder~.pd"
+)
 
 system(f"cp build/libwavae/libwavae.so {PACKAGE}/usr/lib/")
 

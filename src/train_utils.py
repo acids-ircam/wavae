@@ -10,9 +10,11 @@ def train_step_melgan(model, opt, data, writer, ROOT, step, device):
     gen, dis = model
     opt_gen, opt_dis = opt
 
+    data, idx = data
+
     data = data.float().unsqueeze(1).to(device)
 
-    y = gen(data)
+    y = gen(data, idx)
 
     # TRAIN DISCRIMINATOR
     D_fake = dis(y.detach())
@@ -82,7 +84,7 @@ def train_step_vanilla(model,
     # COMPUTE AUTOENCODER REC AND REG LOSSES
     out = model.topvae.loss(S, loudness)
 
-    y,   mean_z, logvar_z, loss_rec, loss_reg = out
+    y, mean_z, logvar_z, loss_rec, loss_reg = out
     loss = loss_rec + .1 * loss_reg
 
     opt.zero_grad()

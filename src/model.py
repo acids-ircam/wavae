@@ -25,23 +25,30 @@ class Vanilla(nn.Module):
 
 class melGAN(nn.Module):
     def __init__(self, sampling_rate, hop, ratios, input_size, ngf, n_res_g,
-                 use_cached_padding):
+                 use_cached_padding, num_spk, n_mels):
         super().__init__()
         self.encoder = MelEncoder(sampling_rate=sampling_rate,
                                   hop=hop,
-                                  input_size=input_size,
+                                  input_size=n_mels,
                                   center=False)
         self.decoder = Generator(input_size=input_size,
                                  ngf=ngf,
                                  n_residual_layers=n_res_g,
                                  ratios=ratios,
                                  use_cached_padding=use_cached_padding)
+        self.num_spk = num_spk
 
-    def forward(self, x, mel_encoded=False):
+    def forward(self, x, idx, mel_encoded=False):
         if mel_encoded:
             mel = x
         else:
             mel = self.encoder(x)
+
+        idx = nn.functional.one_hot(idx, self.num_spk)
+        idx = idx.unsqueeze(-1).float()
+        idx = idx.expand(idx.shape[0], idx.shape[1], mel.shape[2])
+
+        mel = torch.cat([mel, idx], 1)
 
         y = self.decoder(mel)
         return y
@@ -55,7 +62,9 @@ def get_model(config=config):
                       input_size=config.INPUT_SIZE,
                       ngf=config.NGF,
                       n_res_g=config.N_RES_G,
-                      use_cached_padding=config.USE_CACHED_PADDING)
+                      use_cached_padding=config.USE_CACHED_PADDING,
+                      num_spk=config.N_SPEAKERS,
+                      n_mels=config.N_MEL)
 
     elif config.TYPE == "vanilla":
         return Vanilla(sampling_rate=config.SAMPRATE,

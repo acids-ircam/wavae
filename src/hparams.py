@@ -4,16 +4,17 @@ from effortless_config import Config, setting
 class config(Config):
     groups = ["vanilla", "melgan"]
 
-    TYPE = setting(default="vanilla", vanilla="vanilla", melgan="melgan")
+    TYPE = setting(default="melgan", vanilla="vanilla", melgan="melgan")
 
     # MELGAN PARAMETERS
-    INPUT_SIZE = 128
+    INPUT_SIZE = 66
     NGF = 32
     N_RES_G = 3
 
     HOP_LENGTH = 256
+    N_MEL = 64
 
-    RATIOS = setting(default=[1, 1, 1, 2, 1, 1, 1],
+    RATIOS = setting(default=[8, 8, 2, 2],
                      vanilla=[1, 1, 1, 2, 1, 1, 1],
                      melgan=[8, 8, 2, 2])
 
@@ -26,16 +27,19 @@ class config(Config):
     CHANNELS = [128, 256, 256, 512, 512, 512, 128, 32]
     KERNEL = 5
     EXTRACT_LOUDNESS = True
-    AUGMENT = setting(default=5, vanilla=5, melgan=1)
+    AUGMENT = setting(default=1, vanilla=5, melgan=1)
 
     # CLASSIFIER
     CLASSIFIER_CHANNELS = [16, 64, 256]
     CLASSIFIER_LIN_SIZE = [256, 64, 2]
 
     # TRAIN PARAMETERS
+    N_SPEAKERS = 2
+    INDEX_FILE = None
+
     PATH_PREPEND = "./runs/"
     SAMPRATE = 16000
-    N_SIGNAL = setting(default=2**15, vanilla=2**15, melgan=2**14)
+    N_SIGNAL = setting(default=2**14, vanilla=2**15, melgan=2**14)
     EPOCH = 1000
     BATCH = 1
     LR = 1e-4

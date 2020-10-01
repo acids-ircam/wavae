@@ -11,11 +11,16 @@ from src import train_step_melgan, train_step_vanilla
 from src import Loader
 
 from tqdm import tqdm
-from os import path
+from os import path, system
+
+system("git clean -xdf")
+system("yapf -ir .")
 
 config.parse_args()
-# config.override(WAV_LOC="/Users/caillon/Desktop/")
-# config.override(EVAL=10)
+config.override(WAV_LOC="/Users/caillon/Pictures/audio")
+config.override(INDEX_FILE="/Users/caillon/Pictures/audio/info.yaml")
+config.override(BATCH=2)
+config.override(EVAL=10)
 
 # PREPARE DATA
 dataset = Loader(config)

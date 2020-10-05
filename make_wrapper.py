@@ -181,20 +181,8 @@ class Wrapper(nn.Module):
         return z
 
     @torch.jit.export
-    def decode(self, z):
-        if self.pca is not None:
-            if self.extract_loudness:
-                loud, z = z[:, :1, :], z[:, 1:, :]
-                z = (z.permute(0, 2, 1).matmul(
-                    self.U.permute(1, 0) * self.std) + self.mean).permute(
-                        0, 2, 1)
-                z = torch.cat([loud, z], 1)
-            else:
-                z = (z.permute(0, 2, 1).matmul(
-                    self.U.permute(1, 0) * self.std) + self.mean).permute(
-                        0, 2, 1)
-        mel = torch.sigmoid(self.trace_decoder(z))
-        mel = torch.split(mel, self.mel_size, 1)[0]
+    def decode(self, x):
+        mel = self.melencode(x)
         waveform = self.trace_melgan(mel)
         return waveform
 

@@ -7,7 +7,7 @@ import torch.nn as nn
 import numpy as np
 
 from src import config
-from src import get_model, compute_pca, LogLoudness
+from src import get_model, compute_pca
 
 torch.set_grad_enabled(False)
 config.parse_args()
@@ -17,7 +17,6 @@ ROOT = path.join("runs/", config.NAME)
 PCA = True
 
 config_melgan = ".".join(path.join(ROOT, "melgan", "config").split("/"))
-config_vanilla = ".".join(path.join(ROOT, "vanilla", "config").split("/"))
 
 
 class BufferSTFT(nn.Module):
@@ -65,125 +64,57 @@ class Wrapper(nn.Module):
         melgan.load_state_dict(state_dict)
         ###################################################################
 
-        # BUILDING VANILLA ################################################
-        hparams_vanilla = importlib.import_module(config_vanilla).config
-        hparams_vanilla.override(USE_CACHED_PADDING=config.USE_CACHED_PADDING)
-        vanilla = get_model(hparams_vanilla)
-
-        pretrained_state_dict = torch.load(path.join(ROOT, "vanilla",
-                                                     "vanilla_state.pth"),
-                                           map_location="cpu")
-        state_dict = vanilla.state_dict()
-        state_dict.update(pretrained_state_dict)
-        vanilla.load_state_dict(state_dict)
-        ###################################################################
-
-        vanilla.eval()
         melgan.eval()
 
         # PRETRACE MODELS #################################################
-        self.latent_size = int(config.CHANNELS[-1] // 2)
-        self.mel_size = int(config.CHANNELS[0])
+        self.mel_size = int(config.N_MEL)
 
-        if config.USE_CACHED_PADDING:
-            test_wav = torch.randn(1, config.BUFFER_SIZE)
-            test_mel = torch.randn(1, config.INPUT_SIZE, 2)
-            if hparams_vanilla.EXTRACT_LOUDNESS:
-                test_z = torch.randn(1, self.latent_size + 1, 1)
-            else:
-                test_z = torch.randn(1, self.latent_size, 1)
-
-        else:
-            test_wav = torch.randn(1, 8192)
-            test_mel = torch.randn(1, config.INPUT_SIZE, 16)
-            if hparams_vanilla.EXTRACT_LOUDNESS:
-                test_z = torch.randn(1, self.latent_size + 1, 16)
-            else:
-                test_z = torch.randn(1, self.latent_size, 16)
+        test_wav = torch.randn(1, 8192)
+        test_mel = torch.randn(1, config.INPUT_SIZE, 16)
 
         melencoder = TracedMelEncoder(
-            vanilla.melencoder,
-            BufferSTFT(config.BUFFER_SIZE, config.HOP_LENGTH),
+            melgan.encoder, BufferSTFT(config.BUFFER_SIZE, config.HOP_LENGTH),
             config.HOP_LENGTH, config.USE_CACHED_PADDING)
 
-        logloudness = LogLoudness(
-            int(hparams_vanilla.HOP_LENGTH * np.prod(hparams_vanilla.RATIOS)),
-            1e-4)
-
-        self.trace_logloudness = torch.jit.script(logloudness)
         self.trace_melencoder = torch.jit.trace(melencoder,
                                                 test_wav,
                                                 check_trace=False)
-        self.trace_encoder = torch.jit.trace(vanilla.topvae.encoder,
-                                             test_mel,
-                                             check_trace=False)
-        self.trace_decoder = torch.jit.trace(vanilla.topvae.decoder,
-                                             test_z,
-                                             check_trace=False)
         self.trace_melgan = torch.jit.trace(melgan.decoder,
                                             test_mel,
                                             check_trace=False)
 
-        config.override(SAMPRATE=hparams_vanilla.SAMPRATE,
-                        N_SIGNAL=hparams_vanilla.N_SIGNAL,
-                        EXTRACT_LOUDNESS=hparams_vanilla.EXTRACT_LOUDNESS,
-                        TYPE=hparams_vanilla.TYPE,
-                        HOP_LENGTH=hparams_vanilla.HOP_LENGTH,
-                        RATIOS=hparams_vanilla.RATIOS,
-                        WAV_LOC=hparams_vanilla.WAV_LOC,
-                        LMDB_LOC=hparams_vanilla.LMDB_LOC)
+        config.override(SAMPRATE=hparams_melgan.SAMPRATE,
+                        N_SIGNAL=hparams_melgan.N_SIGNAL,
+                        EXTRACT_LOUDNESS=hparams_melgan.EXTRACT_LOUDNESS,
+                        TYPE=hparams_melgan.TYPE,
+                        HOP_LENGTH=hparams_melgan.HOP_LENGTH,
+                        RATIOS=hparams_melgan.RATIOS,
+                        WAV_LOC=hparams_melgan.WAV_LOC,
+                        LMDB_LOC=hparams_melgan.LMDB_LOC)
 
         self.pca = None
 
-        if PCA:
-            try:
-                self.pca = torch.load(path.join(ROOT, "pca.pth"))
-                print("Precomputed pca found")
-
-            except:
-                if config.USE_CACHED_PADDING:
-                    raise Exception(
-                        "PCA should be first computed in non cache mode")
-                print("No precomputed pca found. Computing.")
-                self.pca = None
-
-            if self.pca == None:
-                self.pca = compute_pca(self, 32)
-                torch.save(self.pca, path.join(ROOT, "pca.pth"))
-
-            self.register_buffer("mean", self.pca[0])
-            self.register_buffer("std", self.pca[1])
-            self.register_buffer("U", self.pca[2])
-
-            self.extract_loudness = config.EXTRACT_LOUDNESS
+        self.n_spk = melgan.num_spk
 
     def forward(self, x):
-        return self.decode(self.encode(x))
+        return x
 
     @torch.jit.export
     def melencode(self, x):
         return self.trace_melencoder(x)
 
     @torch.jit.export
-    def encode(self, x):
+    def decode(self, x, idx):
         mel = self.melencode(x)
-        z = self.trace_encoder(mel)
 
-        mean, logvar = torch.split(z, self.latent_size, 1)
-        z = torch.randn_like(mean) * torch.exp(logvar) + mean
+        idx = nn.functional.one_hot(idx, self.n_spk)
+        idx = idx.unsqueeze(-1).float()
+        idx = idx.expand(idx.shape[0], idx.shape[1], mel.shape[2]).to(mel)
 
-        if self.pca is not None:
-            z = (z.permute(0, 2, 1) - self.mean).matmul(self.U).div(
-                self.std).permute(0, 2, 1)
-            if self.extract_loudness:
-                loudness = self.trace_logloudness(x)
-                z = torch.cat([loudness, z], 1)
-        return z
+        mel = torch.cat([mel, idx], 1)
 
-    @torch.jit.export
-    def decode(self, x):
-        mel = self.melencode(x)
         waveform = self.trace_melgan(mel)
+
         return waveform
 
 
@@ -193,10 +124,7 @@ if __name__ == "__main__":
     name_list = [
         config.NAME,
         str(int(np.floor(config.SAMPRATE / 1000))) + "kHz",
-        str(config.CHANNELS[-1] // 2 + int(config.EXTRACT_LOUDNESS)) + "z"
     ]
-    if config.USE_CACHED_PADDING:
-        name_list.append(str(config.BUFFER_SIZE) + "b")
 
     name = "_".join(name_list) + ".ts"
     torch.jit.script(wrapper).save(path.join(ROOT, name))

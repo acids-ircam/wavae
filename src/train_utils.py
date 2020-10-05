@@ -13,7 +13,7 @@ def train_step_melgan(model, opt, data, writer, ROOT, step, device):
     data, idx = data
 
     data = data.float().unsqueeze(1).to(device)
-
+    idx = idx.to(device)
     y = gen(data, idx)
 
     # TRAIN DISCRIMINATOR

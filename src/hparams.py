@@ -7,7 +7,7 @@ class config(Config):
     TYPE = setting(default="melgan", vanilla="vanilla", melgan="melgan")
 
     # MELGAN PARAMETERS
-    INPUT_SIZE = 66
+    INPUT_SIZE = 69
     NGF = 32
     N_RES_G = 3
 

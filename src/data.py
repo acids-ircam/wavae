@@ -36,14 +36,6 @@ def get_transforms(config):
     transforms = SkipElse(
         udls.transforms.Compose([
             udls.transforms.Dequantize(16),
-            udls.transforms.RandomApply(
-                udls.transforms.RandomChoice([
-                    udls.transforms.Reverb(sr=config.SAMPRATE),
-                    udls.transforms.PitchShift(sr=config.SAMPRATE),
-                    udls.transforms.Noise(),
-                ]),
-                p=.7,
-            ),
             udls.transforms.RandomCrop(config.N_SIGNAL),
         ]))
 

@@ -107,17 +107,15 @@ class Wrapper(nn.Module):
     def decode(self, x, idx):
         mel = self.melencode(x)
 
-        # idx = b x i
-        if len(idx.shape) == 2:
+        # idx = b
+        if len(idx.shape) == 1:
             idx = nn.functional.one_hot(idx, self.n_spk)
             idx = idx.unsqueeze(-1).float()
             idx = idx.expand(idx.shape[0], idx.shape[1], mel.shape[2]).to(mel)
-        # idx = b x i x t
-        elif len(idx.shape) == 3:
-            b, i, t = idx.shape
-            idx = idx.reshape(b, -1)
+        # idx = b x t
+        elif len(idx.shape) == 2:
             idx = nn.functional.one_hot(idx, self.n_spk)
-            idx = idx.permute(0, 2, 1).reshape(b, self.n_spk, i, t)
+            idx = idx.permute(0, 2, 1).to(mel)
 
         mel = torch.cat([mel, idx], 1)
 

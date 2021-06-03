@@ -25,7 +25,7 @@ class config(Config):
     # AUTOENCODER
     CHANNELS = [128, 256, 256, 512, 512, 512, 128, 32]
     KERNEL = 5
-    EXTRACT_LOUDNESS = True
+    EXTRACT_LOUDNESS = False
     AUGMENT = setting(default=5, vanilla=5, melgan=1)
 
     # CLASSIFIER
@@ -34,7 +34,7 @@ class config(Config):
 
     # TRAIN PARAMETERS
     PATH_PREPEND = "./runs/"
-    SAMPRATE = 16000
+    SAMPRATE = 24000
     N_SIGNAL = setting(default=2**15, vanilla=2**15, melgan=2**14)
     EPOCH = 1000
     BATCH = 1

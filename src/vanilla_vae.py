@@ -26,7 +26,7 @@ class ConvEncoder(nn.Module):
                              cache=use_cached_padding)
             ]
             if i != len(self.ratios) - 1:
-                self.convs += [nn.ReLU(), nn.BatchNorm1d(self.channels[i + 1])]
+                self.convs += [nn.LeakyReLU(), nn.BatchNorm1d(self.channels[i + 1])]
 
         self.convs = nn.Sequential(*self.convs)
 
@@ -76,7 +76,7 @@ class ConvDecoder(nn.Module):
                                           cache=use_cached_padding)
                 ]
             if i:
-                self.convs += [nn.ReLU(), nn.BatchNorm1d(self.channels[i])]
+                self.convs += [nn.LeakyReLU(), nn.BatchNorm1d(self.channels[i])]
 
         self.convs = nn.Sequential(*self.convs)
 

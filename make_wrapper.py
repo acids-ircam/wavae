@@ -8,6 +8,7 @@ import numpy as np
 
 from src import config
 from src import get_model, compute_pca, LogLoudness
+from src.resampling import Resampling
 
 torch.set_grad_enabled(False)
 config.parse_args()
@@ -135,6 +136,9 @@ class Wrapper(nn.Module):
 
         self.pca = None
 
+        self.resampling = torch.jit.script(
+            Resampling(config.TARGET_SR, config.SAMPRATE))
+
         if PCA:
             try:
                 self.pca = torch.load(path.join(ROOT, "pca.pth"))
@@ -166,6 +170,10 @@ class Wrapper(nn.Module):
 
     @torch.jit.export
     def encode(self, x):
+        x = x.unsqueeze(1)
+        x = self.resampling.from_target_sampling_rate(x)
+        x = x.squeeze(1)
+
         mel = self.melencode(x)
         z = self.trace_encoder(mel)
 
@@ -178,10 +186,17 @@ class Wrapper(nn.Module):
             if self.extract_loudness:
                 loudness = self.trace_logloudness(x)
                 z = torch.cat([loudness, z], 1)
+
+        z = z.repeat_interleave(self.resampling.ratio).reshape(
+            z.shape[0],
+            z.shape[1],
+            -1,
+        )
         return z
 
     @torch.jit.export
     def decode(self, z):
+        z = z[..., ::self.resampling.ratio]
         if self.pca is not None:
             if self.extract_loudness:
                 loud, z = z[:, :1, :], z[:, 1:, :]
@@ -196,6 +211,7 @@ class Wrapper(nn.Module):
         mel = torch.sigmoid(self.trace_decoder(z))
         mel = torch.split(mel, self.mel_size, 1)[0]
         waveform = self.trace_melgan(mel)
+        waveform = self.resampling.to_target_sampling_rate(waveform)
         return waveform
 
 
@@ -204,11 +220,12 @@ if __name__ == "__main__":
 
     name_list = [
         config.NAME,
-        str(int(np.floor(config.SAMPRATE / 1000))) + "kHz",
+        str(int(np.floor(config.TARGET_SR / 1000))) + "kHz",
         str(config.CHANNELS[-1] // 2 + int(config.EXTRACT_LOUDNESS)) + "z"
     ]
     if config.USE_CACHED_PADDING:
-        name_list.append(str(config.BUFFER_SIZE) + "b")
+        name_list.append(
+            str(config.BUFFER_SIZE * wrapper.resampling.ratio) + "b")
 
     name = "_".join(name_list) + ".ts"
     torch.jit.script(wrapper).save(path.join(ROOT, name))

@@ -52,6 +52,7 @@ class config(Config):
     # INCREMENTAL GENERATION
     USE_CACHED_PADDING = False
     BUFFER_SIZE = 1024
+    TARGET_SR = 48000
 
 
 if __name__ == "__main__":

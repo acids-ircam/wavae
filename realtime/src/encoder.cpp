@@ -1,12 +1,12 @@
 #include "../libwavae/src/deepAudioEngine.h"
 #include "cstring"
 #include "dlfcn.h"
-#include "m_pd.h"
+#include <m_pd.h>
 #include "pthread.h"
 #include "sched.h"
 #include "thread"
 #include <iostream>
-#include <stdio.h>
+#include <stdio.h>  
 
 #define DAE DeepAudioEngine
 

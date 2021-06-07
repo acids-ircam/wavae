@@ -1,7 +1,7 @@
 #include "../libwavae/src/deepAudioEngine.h"
 #include "cstring"
 #include "dlfcn.h"
-#include "m_pd.h"
+#include <m_pd.h>
 #include "pthread.h"
 #include "sched.h"
 #include "thread"
